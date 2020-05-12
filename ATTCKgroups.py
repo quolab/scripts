@@ -8,8 +8,14 @@
 from attackcti import attack_client
 from pyquo import session
 from pyquo.authenticator import UserAuthenticator
-from pyquo.models import Case, Tag, Tagged, Malware, Encases, URL
+from pyquo.models import Case, Encases, Tag, Tagged
+from pyquo.models import File, Malware, URL, IpAddress
+from pyquo.magicparser import MagicParser
+import requests
+import PyPDF2
 import argparse
+import io
+import os
 
 
 class QuoLab(object):
@@ -31,7 +37,7 @@ class ATTCKgroups(object):
         self.__c = attack_client()
         self.__intrusion_set = {}
 
-    def __map(self, groups, filter):
+    def __get_full_intrusion_set(self, groups, filter):
         for group in groups:
             if filter and group['name'].lower() not in filter:
                 continue
@@ -47,7 +53,38 @@ class ATTCKgroups(object):
         print('[+] Fetching MITRE ATT&CK Intrusion Set')
         groups = self.__c.get_groups()
         groups = self.__c.remove_revoked(groups)
-        self.__map(groups, filter)
+        self.__get_full_intrusion_set(groups, filter)
+
+    def __get_and_parse_PDF(self, url):
+        indicators = []
+        p = MagicParser()
+        r = requests.get(url)
+        if r.status_code != 200:
+            return indicators
+        if r.headers['content-type'] != 'application/pdf':
+            return indicators
+        # Get text from each PDF page and parse it with MagicParser
+        with io.BytesIO(r.content) as pdf_file:
+            reader = PyPDF2.PdfFileReader(pdf_file, strict=False)
+            title = reader.getDocumentInfo().title
+            for page in reader.pages:
+                text = page.extractText()
+                indicators += p.parse(text)
+        # Store PDF as a file, concretize it and then add it to indicator list
+        if not title:
+            title = os.path.basename(url)
+        f = File.upload(r.content, filename=title)
+        f.save()
+        indicators.append(f)
+        # Concretize indicators unless phantoms (Hashes or IP ranges)
+        # pyquo not supporting facets yet we need to filter on type and id
+        for indicator in indicators:
+            if type(indicator) == File:
+                continue
+            if type(indicator) == IpAddress and '/' in indicator.id:
+                continue
+            indicator.save()
+        return indicators
 
     def __get_reference_URLs(self, attck_set):
         urls = []
@@ -79,41 +116,62 @@ class ATTCKgroups(object):
             ids += self.__get_ATTCK_IDs_from_refs(name, references)
         return ids
 
+    def __map_ATTCK_IDs_as_tags(self, case, techniques):
+        # Collect ATT&CK techniques and tag appropriately
+        for tech_id, _ in self.__get_ATTCK_IDs(techniques):
+            tags = [t for t in Tag.filter() if tech_id in t.name]
+            for tag in tags:
+                ref = Tagged(source=case, target=tag).save()
+                print(' |-', ref)
+
+    def __map_external_reference(self, case, intrusion_set):
+        # Create folders with external references
+        for reference in self.__get_reference_URLs(intrusion_set):
+            url, source, description = reference
+            folder = Case(name=source,
+                          description=description,
+                          flavor='folder',
+                          type='investigation').save()
+            ref = Encases(source=case, target=folder).save()
+            print(' |-', ref)
+            url = URL(url).save()
+            ref = Encases(source=folder, target=url).save()
+            print(' |--', ref)
+            # If URL leads to PDF attempt to parse indicators from it
+            for indicator in self.__get_and_parse_PDF(url.id):
+                ref = Encases(source=folder, target=indicator).save()
+                print(' |---', ref)
+
+    def __map_malware_set(self, case, softwares):
+        # XXX deal with x_mitre_aliases
+        # XXX maybe also good to keep the rescription -> url if any
+        for _, name in self.__get_ATTCK_IDs(softwares, ['malware']):
+            malware = Malware(name).save()
+            ref = Encases(source=case, target=malware).save()
+            print(' |-', ref)
+
     def map_to_quolab(self):
         for name in self.__intrusion_set:
             print('[+] Mapping Intrusion Set \"%s\" to QuoLab' % (name))
             # Create an adversary case with as name the group value
+            case_name = name
+            aliases = self.__intrusion_set[name]['aliases']
+            aliases.remove(case_name)
+            if aliases:
+                case_name += ' (a.k.a. %s)' % (', '.join(aliases))
             description = self.__intrusion_set[name]['description']
-            case = Case(name=name, description=description,
+            case = Case(name=case_name, description=description,
                         flavor='case', type='adversary').save()
-            # XXX deal with threat actor aliases
-            # Create folders with the external references
-            intrusion_set = self.__intrusion_set[name]
-            for reference in self.__get_reference_URLs(intrusion_set):
-                url, source, description = reference
-                folder = Case(name=source,
-                              description=description,
-                              flavor='folder',
-                              type='investigation').save()
-                ref = Encases(source=case, target=folder).save()
-                print(' |-', ref)
-                url = URL(url).save()
-                ref = Encases(source=folder, target=url).save()
-                print(' |-', ref)
-            # Collect ATT&CK techniques and tag appropriately
+            # Extract ATT&CK IDs and tag the case with it
             techniques = self.__intrusion_set[name]['techniques']
-            for tech_id, _ in self.__get_ATTCK_IDs(techniques):
-                tags = [t for t in Tag.filter() if tech_id in t.name]
-                for tag in tags:
-                    ref = Tagged(source=case, target=tag).save()
-                    print(' |-', ref)
-            # Collect malware names and encase them
+            self.__map_ATTCK_IDs_as_tags(case, techniques)
+            # Walk through external references to create folders
+            # Parse indicators from reports and encase to folders
+            self.__map_external_reference(case, self.__intrusion_set[name])
+            # Extract ATT&CK softwares IDs relative to malware
+            # and create Malware facts to be enclosed to the case
             softwares = self.__intrusion_set[name]['softwares']
-            for _, name in self.__get_ATTCK_IDs(softwares, ['malware']):
-                malware = Malware(name).save()
-                ref = Encases(source=case, target=malware).save()
-                print(' |-', ref)
-            # XXX deal with x_mitre_aliases
+            self.__map_malware_set(case, softwares)
 
 
 if __name__ == '__main__':
