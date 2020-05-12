@@ -31,8 +31,10 @@ class ATTCKgroups(object):
         self.__c = attack_client()
         self.__intrusion_set = {}
 
-    def __map(self, groups):
+    def __map(self, groups, filter):
         for group in groups:
+            if filter and group['name'].lower() not in filter:
+                continue
             print(' |- Adding Intrusion Set for \"%s\"' % (group['name']))
             group_set = {'techniques':
                          self.__c.get_techniques_used_by_group(group),
@@ -41,11 +43,11 @@ class ATTCKgroups(object):
             group_set.update(group)
             self.__intrusion_set[group['name']] = group_set
 
-    def get_intrusion_set(self):
+    def get_intrusion_set(self, filter=[]):
         print('[+] Fetching MITRE ATT&CK Intrusion Set')
         groups = self.__c.get_groups()
         groups = self.__c.remove_revoked(groups)
-        self.__map(groups)
+        self.__map(groups, filter)
 
     def __get_reference_URLs(self, attck_set):
         urls = []
@@ -121,11 +123,16 @@ if __name__ == '__main__':
                    required=True, help='https://qlab.quo')
     p.add_argument('--creds', type=str,
                    required=True, help='username:password')
+    p.add_argument('--filter', type=str, help='apt1,...')
     args = p.parse_args()
 
     username, password = args.creds.split(':')
     q = QuoLab(args.host, username, password)
 
+    filter = []
+    if args.filter:
+        filter = [f.lower() for f in args.filter.split(',')]
+
     a = ATTCKgroups()
-    a.get_intrusion_set()
+    a.get_intrusion_set(filter)
     a.map_to_quolab()
