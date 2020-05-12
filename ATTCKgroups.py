@@ -9,13 +9,15 @@ from attackcti import attack_client
 from pyquo import session
 from pyquo.authenticator import UserAuthenticator
 from pyquo.models import Case, Encases, Tag, Tagged
-from pyquo.models import File, Malware, URL, IpAddress
+from pyquo.models import File, Malware, URL, IpAddress, Certificate
 from pyquo.magicparser import MagicParser
 import requests
 import PyPDF2
 import argparse
 import io
 import os
+
+requests.packages.urllib3.disable_warnings()
 
 
 class QuoLab(object):
@@ -58,7 +60,12 @@ class ATTCKgroups(object):
     def __get_and_parse_PDF(self, url):
         indicators = []
         p = MagicParser()
-        r = requests.get(url)
+        try:
+            r = requests.get(url, verify=False)
+        except requests.exceptions.SSLError:
+            return indicators
+        except requests.exceptions.ConnectionError:
+            return indicators
         if r.status_code != 200:
             return indicators
         if r.headers['content-type'] != 'application/pdf':
@@ -79,7 +86,7 @@ class ATTCKgroups(object):
         # Concretize indicators unless phantoms (Hashes or IP ranges)
         # pyquo not supporting facets yet we need to filter on type and id
         for indicator in indicators:
-            if type(indicator) == File:
+            if type(indicator) == File or type(indicator) == Certificate:
                 continue
             if type(indicator) == IpAddress and '/' in indicator.id:
                 continue
