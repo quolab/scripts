@@ -44,6 +44,9 @@ optional arguments:
   --filter FILTER  apt1,...
 ```
 
+In practice on a clean fresh QuoLab node, importing existing 90+ intrusion is looking like that:
+![ATTCK pull](./screenshots/ATTCKgroups_pull.png)
+
 # Acknowledgments
 
 * Hat tip to the [QuoLab](https://quolab.com) for the hard work
