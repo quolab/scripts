@@ -73,10 +73,13 @@ class ATTCKgroups(object):
         # Get text from each PDF page and parse it with MagicParser
         with io.BytesIO(r.content) as pdf_file:
             reader = PyPDF2.PdfFileReader(pdf_file, strict=False)
-            title = reader.getDocumentInfo().title
-            for page in reader.pages:
-                text = page.extractText()
-                indicators += p.parse(text)
+            try:
+                title = reader.getDocumentInfo().title
+                for page in reader.pages:
+                    text = page.extractText()
+                    indicators += p.parse(text)
+            except PyPDF2.utils.PdfReadError:
+                return indicators
         # Store PDF as a file, concretize it and then add it to indicator list
         if not title:
             title = os.path.basename(url)
