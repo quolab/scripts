@@ -89,8 +89,8 @@ class MISP_TA_Galaxy(object):
             return indicators
         # Get text from each PDF page and parse it with MagicParser
         with io.BytesIO(r.content) as pdf_file:
-            reader = PyPDF2.PdfFileReader(pdf_file, strict=False)
             try:
+                reader = PyPDF2.PdfFileReader(pdf_file, strict=False)
                 title = reader.getDocumentInfo().title
                 for page in reader.pages:
                     text = page.extractText()
