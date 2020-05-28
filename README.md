@@ -80,4 +80,5 @@ In practice on a clean fresh QuoLab node, importing the 324 threat actors (as of
 
 * Hat tip to the [QuoLab](https://quolab.com) team for the hard work
 * All the inspiration from the InfoSec community over the years
+* The [MISP Project](https://www.misp-project.org/) folks and contributors
 * The amazing work from the [ATT\&CK](https://attack.mitre.org) folks and contributors
