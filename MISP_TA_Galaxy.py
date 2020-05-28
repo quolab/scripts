@@ -3,6 +3,7 @@ from pyquo.authenticator import UserAuthenticator
 from pyquo.models import Case, Encases, Tag, Tagged
 from pyquo.models import File, URL, IpAddress, Certificate
 from pyquo.magicparser import MagicParser
+from pyquo.errors import FetchError
 import requests
 import PyPDF2
 import json
@@ -147,7 +148,12 @@ class MISP_TA_Galaxy(object):
                           type='investigation').save()
             ref = Encases(source=case, target=folder).save()
             print(' |-', ref)
-            url = URL(url).save()
+            # Handle URL constraint error on malformed data
+            try:
+                url = URL(url).save()
+            except FetchError:
+                print(' ! Issue Concretizing \"%s\"' % (url))
+                continue
             ref = Encases(source=folder, target=url).save()
             print(' |--', ref)
             # If URL leads to PDF, attempt to parse indicators from it
