@@ -76,6 +76,43 @@ optional arguments:
 In practice on a clean fresh QuoLab node, importing the 324 threat actors (as of May 28th 2020) is looking like that:
 ![MISP pull](./screenshots/MISP_TA_Galaxy_pull.png)
 
+# upload_dir.py and watch_dir.py
+
+Both script aim at uploading files from a directory toward a particular existing QuoLab case (or folder in a case).
+The script upload_dir.py just does that, watch_dir.py will watch a directory for newly created files and immediatly upload them to the target case.
+
+### Usage
+
+Both script should be ran directly from commandline using python3, host, creds, caseid and dir parameters are mandatory.
+
+```
+$ python3 upload_dir.py --help
+usage: upload_dir.py [-h] --host HOST --creds CREDS --caseid CASEID --dir DIR
+
+Upload content of a directory to a QuoLab case
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --host HOST      https://qlab.quo
+  --creds CREDS    username:password
+  --caseid CASEID  HPUeI5kDTTyNlWGZbbnQQA
+  --dir DIR        target directory
+```
+
+```
+$ python3 watch_dir.py --help
+usage: watch_dir.py [-h] --host HOST --creds CREDS --caseid CASEID --dir DIR
+
+Watch a directory and upload new files to a QuoLab case
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --host HOST      https://qlab.quo
+  --creds CREDS    username:password
+  --caseid CASEID  HPUeI5kDTTyNlWGZbbnQQA
+  --dir DIR        target directory
+```
+
 # Acknowledgments
 
 * Hat tip to the [QuoLab](https://quolab.com) team for the hard work
