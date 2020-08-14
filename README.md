@@ -78,12 +78,12 @@ In practice on a clean fresh QuoLab node, importing the 324 threat actors (as of
 
 # upload_dir.py and watch_dir.py
 
-Both script aim at uploading files from a directory toward a particular existing QuoLab case (or folder in a case).
+Both scripts aim at uploading files from a directory toward a particular existing QuoLab case (or folder in a case).
 The script upload_dir.py just does that, watch_dir.py will watch a directory for newly created files and immediatly upload them to the target case.
 
-### Usage
+## Usage
 
-Both script should be ran directly from commandline using python3, host, creds, caseid and dir parameters are mandatory.
+Both scripts should be ran directly from commandline using python3, host, creds, caseid and dir parameters are mandatory.
 
 ```
 $ python3 upload_dir.py --help
@@ -111,6 +111,28 @@ optional arguments:
   --creds CREDS    username:password
   --caseid CASEID  HPUeI5kDTTyNlWGZbbnQQA
   --dir DIR        target directory
+```
+
+# spiderfoot_profiler.py
+
+That script aims at importing [Spiderfoot](https://www.spiderfoot.net/) JSON reports to QuoLab as profile case(s).
+
+## Usage
+
+```
+$ python3 spiderfoot_profiler.py --help
+usage: spiderfoot_profiler.py [-h] --host HOST --creds CREDS --input INPUT
+                              [--caseid CASEID] [--casename CASENAME]
+
+Imports Spiderfoot JSON output to QuoLab case
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --host HOST          https://qlab.quo
+  --creds CREDS        username:password
+  --input INPUT        spiderfoot JSON report
+  --caseid CASEID      example HPUeI5kDTTyNlWGZbbnQQA
+  --casename CASENAME  case name to be created
 ```
 
 # Acknowledgments
