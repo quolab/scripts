@@ -135,6 +135,28 @@ optional arguments:
   --casename CASENAME  case name to be created
 ```
 
+# timeline2elk.py
+
+That script tap on all or a specific set of timelines to display events on console and optionally pushes them to an ELK instance for further analysis.
+
+## Usage
+```
+$ python3 timeline2elk.py --help
+usage: timeline2elk.py [-h] --host HOST --creds CREDS [--elk ELK]
+                       [--timelines TIMELINES] [--debug]
+
+Track QuoLab timeline events and dump them to ELK
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --host HOST           quolab host
+  --creds CREDS         username:password
+  --elk ELK             elk host
+  --timelines TIMELINES
+                        timeline ID, ...
+  --debug
+```
+ 
 # Acknowledgments
 
 * Hat tip to the [QuoLab](https://quolab.com) team for the hard work
