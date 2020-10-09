@@ -14,41 +14,51 @@ class ElasticSearchConnector(object):
     def __init__(self, elkhost):
         self.__es = elasticsearch.Elasticsearch([{'host': elkhost}])
         self.__es_index = 'quolab'
-
-        self.__es_map_event = {
-            'event': {
-                'properties': {
-                    'body': {
-                        'properties': {
-                            'timestamp': {
+        self.__es_mapping = {
+            'mappings': {
+                'dynamic_templates': [
+                    {
+                        'first_seen_field': {
+                            'path_match': '*.first:Min',
+                            'mapping': {
+                                'type': 'date',
+                                'format': 'epoch_millis'
+                            }
+                        }
+                    },
+                    {
+                        'last_seen_field': {
+                            'path_match': '*.last:Max',
+                            'mapping': {
+                                'type': 'date',
+                                'format': 'epoch_millis'
+                            }
+                        }
+                    },
+                    {
+                        'timestamp_field': {
+                            'path_match': '*.timestamp',
+                            'mapping': {
                                 'type': 'date',
                                 'format': 'epoch_millis'
                             }
                         }
                     }
-                }
+                ]
             }
         }
-
-        self.__doc_methods = {
-            'event': self.__es_map_event}
-
         self.__build_index()
 
     def __build_index(self):
         if not self.__es.indices.exists(self.__es_index):
-            self.__es.indices.create(self.__es_index)
-            for tag in self.__doc_methods:
-                mapping = self.__doc_methods[tag]
-                self.__es.indices.put_mapping(index=self.__es_index,
-                                              doc_type=tag,
-                                              body=mapping,
-                                              include_type_name=True)
+            r = self.__es.indices.create(self.__es_index,
+                                         body=self.__es_mapping)
+            print("Creating index %s: %s", self.__es_index, r)
 
     def index_doc(self, doc):
-        self.__es.index(index=self.__es_index,
-                        doc_type=doc['name'],
-                        body=doc)
+        r = self.__es.index(index=self.__es_index,
+                            body=doc)
+        print("Indexing document: %s", r)
 
 
 class QuoLabWS(object):
@@ -96,8 +106,15 @@ class QuoLabWS(object):
         if j['name'] != 'event':
             return
         # Indexing the rest
-        t = float(j['body']['timestamp'])
-        j['body']['timestamp'] = int(t * 1000)
+        try:
+            t = float(j['body']['data']['document']['first:Min'])
+            j['body']['data']['document']['first:Min'] = int(t * 1000)
+            t = float(j['body']['data']['document']['last:Max'])
+            j['body']['data']['document']['last:Max'] = int(t * 1000)
+            t = float(j['body']['timestamp'])
+            j['body']['timestamp'] = int(t * 1000)
+        except:
+            return
         self.__elk.index_doc(j)
 
     def on_error(self, err):
